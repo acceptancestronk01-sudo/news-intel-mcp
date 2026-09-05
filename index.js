@@ -1,4 +1,5 @@
 import express from 'express';
+import { createPaymentMiddleware } from './payment-verification.js';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
@@ -16,6 +17,9 @@ const PAYMENT_CONFIG = {
   chainId: 'eip155:8453',
   payTo: '0xf081ee84c0d85278a6242bc265f0b312021ebeb1'
 };
+
+// X402 Payment Verification Middleware
+const verifyPayment = createPaymentMiddleware(PAYMENT_CONFIG);
 
 // News categories and sources
 const NEWS_SOURCES = {
@@ -255,73 +259,8 @@ app.get('/.well-known/x402', (req, res) => {
 });
 
 // Protected news intelligence endpoint
-app.get('/api/news', async (req, res) => {
-  const paymentHeader = req.headers['x-payment-signature'];
-
-  if (!paymentHeader) {
-    const bazaarMetadata = {
-      method: 'GET',
-      description: 'Fetch latest news from tech, crypto, AI, and business sources with automated sentiment analysis',
-      queryParamsSchema: {
-        type: 'object',
-        properties: {
-          category: {
-            type: 'string',
-            description: 'News category (tech, crypto, ai, business)',
-            enum: ['tech', 'crypto', 'ai', 'business']
-          },
-          limit: {
-            type: 'integer',
-            description: 'Number of articles (1-20)',
-            minimum: 1,
-            maximum: 20,
-            default: 10
-          }
-        },
-        required: ['category']
-      },
-      outputSchema: {
-        type: 'object',
-        properties: {
-          category: { type: 'string' },
-          count: { type: 'integer' },
-          articles: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                description: { type: 'string' },
-                url: { type: 'string' },
-                source: { type: 'string' },
-                publishedAt: { type: 'string' },
-                sentiment: { type: 'string', enum: ['positive', 'negative', 'neutral'] }
-              }
-            }
-          }
-        }
-      },
-      tags: ['news', 'sentiment', 'tech', 'crypto', 'ai', 'business', 'mcp']
-    };
-
-    res.setHeader('X-Bazaar-Metadata', Buffer.from(JSON.stringify(bazaarMetadata)).toString('base64'));
-
-    return res.status(402).json({
-      error: 'Payment Required',
-      message: 'This endpoint requires payment to access',
-      payment: {
-        scheme: 'exact',
-        network: PAYMENT_CONFIG.chainId,
-        price: `$${PAYMENT_CONFIG.price}`,
-        currency: PAYMENT_CONFIG.currency,
-        payTo: PAYMENT_CONFIG.payTo,
-        description: 'Fetch news with sentiment analysis'
-      },
-      instructions: 'Include payment signature in PAYMENT-SIGNATURE header (x402 v2) or X-PAYMENT header (x402 v1)'
-    });
-  }
-
-  console.log(`Payment received: ${paymentHeader}`);
+app.get('/api/news', verifyPayment, async (req, res) => {
+  // Payment verified by middleware - safe to proceed
 
   try {
     const { category = 'tech', limit = 10 } = req.query;
