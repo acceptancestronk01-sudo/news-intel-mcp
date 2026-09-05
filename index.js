@@ -317,7 +317,7 @@ app.get('/api/news', async (req, res) => {
         payTo: PAYMENT_CONFIG.payTo,
         description: 'Fetch news with sentiment analysis'
       },
-      instructions: 'Include X-Payment-Signature header with valid payment proof'
+      instructions: 'Include payment signature in PAYMENT-SIGNATURE header (x402 v2) or X-PAYMENT header (x402 v1)'
     });
   }
 
